@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Juego - Esquiva los obstáculos</title>
+    <style>
+        body {
+            text-align: center;
+            background-color: #222;
+            color: white;
+            font-family: Arial, sans-serif;
+            margin: 0;
+        }
+
+        canvas {
+            background: black;
+            display: block;
+            margin: auto;
+        }
+
+        #boton-reiniciar {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 18px;
+            cursor: pointer;
+            border: none;
+            background: red;
+            color: white;
+            border-radius: 5px;
+        }
+
+        #boton-reiniciar:hover {
+            background: darkred;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>¡Esquiva los obstáculos!</h1>
+    <canvas id="juego" width="600" height="400"></canvas>
+    <br>
+    <button id="boton-reiniciar">Reiniciar Juego</button>
+
+    <script>
+        const canvas = document.getElementById("juego");
+        const ctx = canvas.getContext("2d");
+
+        let jugador = { x: 280, y: 180, size: 20, speed: 5 };
+        let obstaculos = [];
+        let juegoActivo = true;
+
+        // Generar obstáculos en direcciones aleatorias
+        function crearObstaculo() {
+            let lado = Math.floor(Math.random() * 4); // 0: arriba, 1: abajo, 2: izquierda, 3: derecha
+            let x, y, dx, dy, velocidad = 9;
+
+            if (lado === 0) { x = Math.random() * canvas.width; y = 0; dx = (Math.random() - 0.5) * 2; dy = velocidad; }
+            else if (lado === 1) { x = Math.random() * canvas.width; y = canvas.height; dx = (Math.random() - 0.5) * 2; dy = -velocidad; }
+            else if (lado === 2) { x = 0; y = Math.random() * canvas.height; dx = velocidad; dy = (Math.random() - 0.5) * 2; }
+            else { x = canvas.width; y = Math.random() * canvas.height; dx = -velocidad; dy = (Math.random() - 0.5) * 2; }
+
+            obstaculos.push({ x, y, size: 20, dx, dy });
+        }
+
+        // Controles de movimiento
+        let teclas = {};
+        window.addEventListener("keydown", (e) => teclas[e.key] = true);
+        window.addEventListener("keyup", (e) => teclas[e.key] = false);
+
+        function moverJugador() {
+            if (teclas["ArrowUp"] && jugador.y > 0) jugador.y -= jugador.speed;
+            if (teclas["ArrowDown"] && jugador.y < canvas.height - jugador.size) jugador.y += jugador.speed;
+            if (teclas["ArrowLeft"] && jugador.x > 0) jugador.x -= jugador.speed;
+            if (teclas["ArrowRight"] && jugador.x < canvas.width - jugador.size) jugador.x += jugador.speed;
+        }
+
+        function actualizarJuego() {
+            if (!juegoActivo) return;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Dibujar jugador
+            ctx.fillStyle = "lime";
+            ctx.fillRect(jugador.x, jugador.y, jugador.size, jugador.size);
+
+            // Mover y dibujar obstáculos
+            ctx.fillStyle = "red";
+            obstaculos.forEach((obs, index) => {
+                obs.x += obs.dx;
+                obs.y += obs.dy;
+
+                // Si el obstáculo se sale de la pantalla, lo eliminamos
+                if (obs.x < -obs.size || obs.x > canvas.width + obs.size || obs.y < -obs.size || obs.y > canvas.height + obs.size) {
+                    obstaculos.splice(index, 1);
+                }
+
+                ctx.fillRect(obs.x, obs.y, obs.size, obs.size);
+
+                // Colisión con el jugador
+                if (obs.x < jugador.x + jugador.size &&
+                    obs.x + obs.size > jugador.x &&
+                    obs.y < jugador.y + jugador.size &&
+                    obs.y + obs.size > jugador.y) {
+                    juegoActivo = false;
+                    alert("¡Perdiste! Intenta de nuevo.");
+                }
+            });
+
+            moverJugador();
+            requestAnimationFrame(actualizarJuego);
+        }
+
+        // Crear obstáculos cada 1.5 segundos
+        setInterval(() => { if (juegoActivo) crearObstaculo(); }, 1500);
+
+        // Botón de reinicio
+        document.getElementById("boton-reiniciar").addEventListener("click", () => {
+            jugador = { x: 280, y: 180, size: 20, speed: 5 };
+            obstaculos = [];
+            juegoActivo = true;
+            actualizarJuego();
+        });
+
+        actualizarJuego();
+    </script>
+
+</body>
+</html>
