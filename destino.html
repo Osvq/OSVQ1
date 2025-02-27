@@ -3,14 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Juego de Esquivar Obstáculos</title>
+    <title>Juego de la Serpiente</title>
     <style>
         body {
             font-family: Arial, sans-serif;
             text-align: center;
-            margin: 0;
-            padding: 0;
             background-color: #f0f0f0;
+        }
+
+        h1 {
+            color: #333;
         }
 
         canvas {
@@ -53,8 +55,8 @@
 </head>
 <body>
 
-    <h1>Juego de Esquivar Obstáculos</h1>
-    <p id="score">Tiempo: 0s</p>
+    <h1>Juego de la Serpiente</h1>
+    <p id="score">Puntuación: 0</p>
     <canvas id="gameCanvas" width="400" height="400"></canvas>
 
     <div class="controls">
@@ -67,134 +69,101 @@
     </div>
 
     <button onclick="startGame()">Iniciar</button>
-    <button onclick="pauseGame()">Pausar</button>
     <button onclick="resetGame()">Reiniciar</button>
 
     <script>
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
 
-        let player = { x: 180, y: 180, size: 20, speed: 5 };
-        let obstacles = [];
-        let gameInterval, obstacleInterval, scoreInterval;
-        let obstacleSpeed = 4;
-        let isRunning = false;
+        let snake = [{ x: 200, y: 200 }];
+        let direction = "RIGHT";
+        let food = { x: 0, y: 0 };
         let score = 0;
+        let gameInterval;
+        let speed = 150;
 
-        function drawPlayer() {
-            ctx.fillStyle = "blue";
-            ctx.fillRect(player.x, player.y, player.size, player.size);
+        function placeFood() {
+            food.x = Math.floor(Math.random() * 20) * 20;
+            food.y = Math.floor(Math.random() * 20) * 20;
         }
 
-        function drawObstacles() {
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
             ctx.fillStyle = "red";
-            obstacles.forEach(obstacle => {
-                ctx.fillRect(obstacle.x, obstacle.y, obstacle.size, obstacle.size);
-            });
+            ctx.fillRect(food.x, food.y, 20, 20);
+
+            ctx.fillStyle = "green";
+            snake.forEach(part => ctx.fillRect(part.x, part.y, 20, 20));
+
+            moveSnake();
+            checkCollision();
         }
 
-        function updateObstacles() {
-            obstacles.forEach(obstacle => {
-                obstacle.x += obstacle.speedX;
-                obstacle.y += obstacle.speedY;
-            });
+        function moveSnake() {
+            let head = { x: snake[0].x, y: snake[0].y };
 
-            obstacles = obstacles.filter(obstacle => 
-                obstacle.x >= -20 && obstacle.x <= canvas.width + 20 &&
-                obstacle.y >= -20 && obstacle.y <= canvas.height + 20
-            );
+            if (direction === "UP") head.y -= 20;
+            if (direction === "DOWN") head.y += 20;
+            if (direction === "LEFT") head.x -= 20;
+            if (direction === "RIGHT") head.x += 20;
+
+            snake.unshift(head);
+
+            if (head.x === food.x && head.y === food.y) {
+                score++;
+                document.getElementById("score").innerText = Puntuación: ${score};
+                placeFood();
+                if (speed > 50) speed -= 5;
+                clearInterval(gameInterval);
+                gameInterval = setInterval(draw, speed);
+            } else {
+                snake.pop();
+            }
         }
 
-        function checkCollisions() {
-            for (let obstacle of obstacles) {
-                if (
-                    player.x < obstacle.x + obstacle.size &&
-                    player.x + player.size > obstacle.x &&
-                    player.y < obstacle.y + obstacle.size &&
-                    player.y + player.size > obstacle.y
-                ) {
-                    alert(¡Perdiste! Sobreviviste ${score} segundos.);
+        function checkCollision() {
+            let head = snake[0];
+
+            if (head.x < 0 || head.x >= canvas.width || head.y < 0 || head.y >= canvas.height) {
+                alert(¡Perdiste! Puntuación: ${score});
+                resetGame();
+            }
+
+            for (let i = 1; i < snake.length; i++) {
+                if (head.x === snake[i].x && head.y === snake[i].y) {
+                    alert(¡Perdiste! Puntuación: ${score});
                     resetGame();
-                    return;
                 }
             }
         }
 
-        function gameLoop() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            drawPlayer();
-            drawObstacles();
-            updateObstacles();
-            checkCollisions();
-        }
-
         function startGame() {
-            if (!isRunning) {
-                isRunning = true;
-                gameInterval = setInterval(gameLoop, 30);
-                obstacleInterval = setInterval(spawnObstacle, 1000); 
-                scoreInterval = setInterval(() => {
-                    score++;
-                    document.getElementById("score").innerText = Tiempo: ${score}s;
-                }, 1000);
-
-                setInterval(() => {
-                    obstacleSpeed += 1;
-                    spawnObstacle();
-                }, 10000);
-
-                setInterval(() => {
-                    spawnObstacle();
-                    spawnObstacle();
-                }, 5000);
-            }
-        }
-
-        function pauseGame() {
-            clearInterval(gameInterval);
-            clearInterval(scoreInterval);
-            isRunning = false;
+            placeFood();
+            gameInterval = setInterval(draw, speed);
         }
 
         function resetGame() {
             clearInterval(gameInterval);
-            clearInterval(scoreInterval);
-            clearInterval(obstacleInterval);
-            obstacles = [];
-            player.x = 180;
-            player.y = 180;
-            obstacleSpeed = 4;
+            snake = [{ x: 200, y: 200 }];
+            direction = "RIGHT";
             score = 0;
-            document.getElementById("score").innerText = Tiempo: 0s;
-            isRunning = false;
+            speed = 150;
+            document.getElementById("score").innerText = "Puntuación: 0";
+            startGame();
         }
 
-        function spawnObstacle() {
-            const size = 20;
-            let x, y, speedX, speedY;
-
-            const side = Math.floor(Math.random() * 4);
-            if (side === 0) { x = Math.random() * canvas.width; y = -size; speedX = 0; speedY = obstacleSpeed; } 
-            else if (side === 1) { x = Math.random() * canvas.width; y = canvas.height; speedX = 0; speedY = -obstacleSpeed; } 
-            else if (side === 2) { x = -size; y = Math.random() * canvas.height; speedX = obstacleSpeed; speedY = 0; } 
-            else { x = canvas.width; y = Math.random() * canvas.height; speedX = -obstacleSpeed; speedY = 0; }
-
-            obstacles.push({ x, y, size, speedX, speedY });
-        }
-
-        // *Controles de teclado*
         document.addEventListener("keydown", (e) => {
-            if (e.key === "ArrowUp" && player.y > 0) player.y -= player.speed;
-            if (e.key === "ArrowDown" && player.y < canvas.height - player.size) player.y += player.speed;
-            if (e.key === "ArrowLeft" && player.x > 0) player.x -= player.speed;
-            if (e.key === "ArrowRight" && player.x < canvas.width - player.size) player.x += player.speed;
+            if (e.key === "ArrowUp" && direction !== "DOWN") direction = "UP";
+            if (e.key === "ArrowDown" && direction !== "UP") direction = "DOWN";
+            if (e.key === "ArrowLeft" && direction !== "RIGHT") direction = "LEFT";
+            if (e.key === "ArrowRight" && direction !== "LEFT") direction = "RIGHT";
         });
 
-        // *Controles táctiles (celular)*
-        document.getElementById("up").addEventListener("touchstart", () => { if (player.y > 0) player.y -= player.speed; });
-        document.getElementById("down").addEventListener("touchstart", () => { if (player.y < canvas.height - player.size) player.y += player.speed; });
-        document.getElementById("left").addEventListener("touchstart", () => { if (player.x > 0) player.x -= player.speed; });
-        document.getElementById("right").addEventListener("touchstart", () => { if (player.x < canvas.width - player.size) player.x += player.speed; });
+        document.getElementById("up").addEventListener("click", () => { if (direction !== "DOWN") direction = "UP"; });
+        document.getElementById("down").addEventListener("click", () => { if (direction !== "UP") direction = "DOWN"; });
+        document.getElementById("left").addEventListener("click", () => { if (direction !== "RIGHT") direction = "LEFT"; });
+        document.getElementById("right").addEventListener("click", () => { if (direction !== "LEFT") direction = "RIGHT"; });
 
     </script>
 
