@@ -3,126 +3,202 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Juego - Esquiva los obstáculos</title>
+    <title>Juego de Esquivar Obstáculos</title>
     <style>
         body {
-            text-align: center;
-            background-color: #222;
-            color: white;
             font-family: Arial, sans-serif;
+            text-align: center;
             margin: 0;
+            padding: 0;
+            background-color: #f0f0f0;
         }
 
         canvas {
-            background: black;
+            background-color: white;
+            border: 2px solid black;
             display: block;
             margin: auto;
         }
 
-        #boton-reiniciar {
-            margin-top: 20px;
-            padding: 10px 20px;
-            font-size: 18px;
-            cursor: pointer;
-            border: none;
-            background: red;
-            color: white;
-            border-radius: 5px;
+        .controls {
+            display: flex;
+            justify-content: center;
+            margin-top: 10px;
         }
 
-        #boton-reiniciar:hover {
-            background: darkred;
+        .controls button {
+            width: 60px;
+            height: 60px;
+            font-size: 20px;
+            margin: 5px;
+            border-radius: 50%;
+            border: none;
+            background-color: #333;
+            color: white;
+            cursor: pointer;
+        }
+
+        .controls button:active {
+            background-color: #555;
+        }
+
+        .vertical-controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-right: 10px;
+        }
+
+        #score {
+            font-size: 20px;
+            margin: 10px;
+            color: #333;
         }
     </style>
 </head>
 <body>
 
-    <h1>¡Esquiva los obstáculos!</h1>
-    <canvas id="juego" width="600" height="400"></canvas>
-    <br>
-    <button id="boton-reiniciar">Reiniciar Juego</button>
+    <h1>Juego de Esquivar Obstáculos</h1>
+    <p id="score">Tiempo: 0s</p>
+    <canvas id="gameCanvas" width="400" height="400"></canvas>
+
+    <div class="controls">
+        <div class="vertical-controls">
+            <button id="up">⬆</button>
+            <button id="down">⬇</button>
+        </div>
+        <div>
+            <button id="left">⬅</button>
+            <button id="right">➡</button>
+        </div>
+    </div>
+
+    <button onclick="startGame()">Iniciar</button>
+    <button onclick="pauseGame()">Pausar</button>
+    <button onclick="resetGame()">Reiniciar</button>
 
     <script>
-        const canvas = document.getElementById("juego");
+        const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
 
-        let jugador = { x: 280, y: 180, size: 20, speed: 5 };
-        let obstaculos = [];
-        let juegoActivo = true;
+        let player = { x: 180, y: 180, size: 20, speed: 5 };
+        let obstacles = [];
+        let gameInterval;
+        let obstacleSpeed = 4; // Aumenté la velocidad inicial
+        let obstacleInterval = 1500;
+        let isRunning = false;
+        let score = 0;
+        let scoreInterval;
 
-        // Generar obstáculos en direcciones aleatorias
-        function crearObstaculo() {
-            let lado = Math.floor(Math.random() * 4); // 0: arriba, 1: abajo, 2: izquierda, 3: derecha
-            let x, y, dx, dy, velocidad = 9;
-
-            if (lado === 0) { x = Math.random() * canvas.width; y = 0; dx = (Math.random() - 0.5) * 2; dy = velocidad; }
-            else if (lado === 1) { x = Math.random() * canvas.width; y = canvas.height; dx = (Math.random() - 0.5) * 2; dy = -velocidad; }
-            else if (lado === 2) { x = 0; y = Math.random() * canvas.height; dx = velocidad; dy = (Math.random() - 0.5) * 2; }
-            else { x = canvas.width; y = Math.random() * canvas.height; dx = -velocidad; dy = (Math.random() - 0.5) * 2; }
-
-            obstaculos.push({ x, y, size: 20, dx, dy });
+        function drawPlayer() {
+            ctx.fillStyle = "blue";
+            ctx.fillRect(player.x, player.y, player.size, player.size);
         }
 
-        // Controles de movimiento
-        let teclas = {};
-        window.addEventListener("keydown", (e) => teclas[e.key] = true);
-        window.addEventListener("keyup", (e) => teclas[e.key] = false);
-
-        function moverJugador() {
-            if (teclas["ArrowUp"] && jugador.y > 0) jugador.y -= jugador.speed;
-            if (teclas["ArrowDown"] && jugador.y < canvas.height - jugador.size) jugador.y += jugador.speed;
-            if (teclas["ArrowLeft"] && jugador.x > 0) jugador.x -= jugador.speed;
-            if (teclas["ArrowRight"] && jugador.x < canvas.width - jugador.size) jugador.x += jugador.speed;
-        }
-
-        function actualizarJuego() {
-            if (!juegoActivo) return;
-
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            // Dibujar jugador
-            ctx.fillStyle = "lime";
-            ctx.fillRect(jugador.x, jugador.y, jugador.size, jugador.size);
-
-            // Mover y dibujar obstáculos
+        function drawObstacles() {
             ctx.fillStyle = "red";
-            obstaculos.forEach((obs, index) => {
-                obs.x += obs.dx;
-                obs.y += obs.dy;
+            obstacles.forEach(obstacle => {
+                ctx.fillRect(obstacle.x, obstacle.y, obstacle.size, obstacle.size);
+            });
+        }
 
-                // Si el obstáculo se sale de la pantalla, lo eliminamos
-                if (obs.x < -obs.size || obs.x > canvas.width + obs.size || obs.y < -obs.size || obs.y > canvas.height + obs.size) {
-                    obstaculos.splice(index, 1);
-                }
-
-                ctx.fillRect(obs.x, obs.y, obs.size, obs.size);
-
-                // Colisión con el jugador
-                if (obs.x < jugador.x + jugador.size &&
-                    obs.x + obs.size > jugador.x &&
-                    obs.y < jugador.y + jugador.size &&
-                    obs.y + obs.size > jugador.y) {
-                    juegoActivo = false;
-                    alert("¡Perdiste! Intenta de nuevo.");
-                }
+        function updateObstacles() {
+            obstacles.forEach(obstacle => {
+                obstacle.x += obstacle.speedX;
+                obstacle.y += obstacle.speedY;
             });
 
-            moverJugador();
-            requestAnimationFrame(actualizarJuego);
+            obstacles = obstacles.filter(obstacle => 
+                obstacle.x >= -20 && obstacle.x <= canvas.width + 20 &&
+                obstacle.y >= -20 && obstacle.y <= canvas.height + 20
+            );
         }
 
-        // Crear obstáculos cada 1.5 segundos
-        setInterval(() => { if (juegoActivo) crearObstaculo(); }, 1500);
+        function checkCollisions() {
+            for (let obstacle of obstacles) {
+                if (
+                    player.x < obstacle.x + obstacle.size &&
+                    player.x + player.size > obstacle.x &&
+                    player.y < obstacle.y + obstacle.size &&
+                    player.y + player.size > obstacle.y
+                ) {
+                    alert(¡Perdiste! Sobreviviste ${score} segundos.);
+                    resetGame();
+                    return;
+                }
+            }
+        }
 
-        // Botón de reinicio
-        document.getElementById("boton-reiniciar").addEventListener("click", () => {
-            jugador = { x: 280, y: 180, size: 20, speed: 5 };
-            obstaculos = [];
-            juegoActivo = true;
-            actualizarJuego();
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawPlayer();
+            drawObstacles();
+            updateObstacles();
+            checkCollisions();
+        }
+
+        function startGame() {
+            if (!isRunning) {
+                isRunning = true;
+                gameInterval = setInterval(gameLoop, 30);
+                setInterval(spawnObstacle, obstacleInterval);
+                scoreInterval = setInterval(() => {
+                    score++;
+                    document.getElementById("score").innerText = Tiempo: ${score}s;
+                }, 1000);
+
+                setInterval(() => {
+                    obstacleSpeed += 1;
+                    if (obstacleInterval > 500) obstacleInterval -= 200;
+                }, 10000);
+            }
+        }
+
+        function pauseGame() {
+            clearInterval(gameInterval);
+            clearInterval(scoreInterval);
+            isRunning = false;
+        }
+
+        function resetGame() {
+            clearInterval(gameInterval);
+            clearInterval(scoreInterval);
+            obstacles = [];
+            player.x = 180;
+            player.y = 180;
+            obstacleSpeed = 4;
+            score = 0;
+            document.getElementById("score").innerText = Tiempo: 0s;
+            isRunning = false;
+        }
+
+        function spawnObstacle() {
+            const size = 20;
+            let x, y, speedX, speedY;
+
+            const side = Math.floor(Math.random() * 4);
+            if (side === 0) { x = Math.random() * canvas.width; y = -size; speedX = 0; speedY = obstacleSpeed; } 
+            else if (side === 1) { x = Math.random() * canvas.width; y = canvas.height; speedX = 0; speedY = -obstacleSpeed; } 
+            else if (side === 2) { x = -size; y = Math.random() * canvas.height; speedX = obstacleSpeed; speedY = 0; } 
+            else { x = canvas.width; y = Math.random() * canvas.height; speedX = -obstacleSpeed; speedY = 0; }
+
+            obstacles.push({ x, y, size, speedX, speedY });
+        }
+
+        // *Controles de teclado*
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "ArrowUp" && player.y > 0) player.y -= player.speed;
+            if (e.key === "ArrowDown" && player.y < canvas.height - player.size) player.y += player.speed;
+            if (e.key === "ArrowLeft" && player.x > 0) player.x -= player.speed;
+            if (e.key === "ArrowRight" && player.x < canvas.width - player.size) player.x += player.speed;
         });
 
-        actualizarJuego();
+        // *Controles táctiles (celular)*
+        document.getElementById("up").addEventListener("touchstart", () => { if (player.y > 0) player.y -= player.speed; });
+        document.getElementById("down").addEventListener("touchstart", () => { if (player.y < canvas.height - player.size) player.y += player.speed; });
+        document.getElementById("left").addEventListener("touchstart", () => { if (player.x > 0) player.x -= player.speed; });
+        document.getElementById("right").addEventListener("touchstart", () => { if (player.x < canvas.width - player.size) player.x += player.speed; });
+
     </script>
 
 </body>
