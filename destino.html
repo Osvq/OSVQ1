@@ -20,9 +20,17 @@
             margin: auto;
         }
 
+        #score {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 10px;
+            color: #333;
+        }
+
         .controls {
             display: flex;
             justify-content: center;
+            align-items: center;
             margin-top: 10px;
         }
 
@@ -41,19 +49,6 @@
         .controls button:active {
             background-color: #555;
         }
-
-        .vertical-controls {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            margin-right: 10px;
-        }
-
-        #score {
-            font-size: 20px;
-            margin: 10px;
-            color: #333;
-        }
     </style>
 </head>
 <body>
@@ -63,14 +58,12 @@
     <canvas id="gameCanvas" width="400" height="400"></canvas>
 
     <div class="controls">
-        <div class="vertical-controls">
+        <button id="left">⬅</button>
+        <div style="display: flex; flex-direction: column;">
             <button id="up">⬆</button>
             <button id="down">⬇</button>
         </div>
-        <div>
-            <button id="left">⬅</button>
-            <button id="right">➡</button>
-        </div>
+        <button id="right">➡</button>
     </div>
 
     <button onclick="startGame()">Iniciar</button>
@@ -83,12 +76,10 @@
 
         let player = { x: 180, y: 180, size: 20, speed: 5 };
         let obstacles = [];
-        let gameInterval;
-        let obstacleSpeed = 4; // Aumenté la velocidad inicial
-        let obstacleInterval = 1500;
+        let gameInterval, obstacleInterval, scoreInterval;
+        let obstacleSpeed = 4;
         let isRunning = false;
         let score = 0;
-        let scoreInterval;
 
         function drawPlayer() {
             ctx.fillStyle = "blue";
@@ -141,7 +132,7 @@
             if (!isRunning) {
                 isRunning = true;
                 gameInterval = setInterval(gameLoop, 30);
-                setInterval(spawnObstacle, obstacleInterval);
+                obstacleInterval = setInterval(spawnObstacle, 1000); 
                 scoreInterval = setInterval(() => {
                     score++;
                     document.getElementById("score").innerText = Tiempo: ${score}s;
@@ -149,8 +140,13 @@
 
                 setInterval(() => {
                     obstacleSpeed += 1;
-                    if (obstacleInterval > 500) obstacleInterval -= 200;
+                    spawnObstacle();
                 }, 10000);
+
+                setInterval(() => {
+                    spawnObstacle();
+                    spawnObstacle();
+                }, 5000);
             }
         }
 
@@ -163,6 +159,7 @@
         function resetGame() {
             clearInterval(gameInterval);
             clearInterval(scoreInterval);
+            clearInterval(obstacleInterval);
             obstacles = [];
             player.x = 180;
             player.y = 180;
